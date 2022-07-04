@@ -1,60 +1,60 @@
-### 设计思想及原理
+### Design ideas and principles
 
-如下图所示：
-![Alt 缓存框架](FlowChart.png "缓存框架")
-
-
-AOP拦截到请求后：
->1. 根据请求中的注解@Cache生成缓存Key；
->2. 根据缓存Key去缓存中获取数据
-  * 如果有数据，则判断是否是需要自动加载，如果需要，则把相关数据封装到AutoLoadTO中，并交给AutoLoadHandler进行处理；如果不需要自动加载、则判断缓存是否快要过期，如果快要过期则开启新的线程刷新缓存，由RefreshHandler来处理。最后把缓存数据返回给用户；
-  * 如果没有数据，则去数据层加载数据
->3. 去数据层获取数据时，为了减少并发，增加等待机制（拿来主义机制）：如果多个用户同时取一个数据，那么先让第一个请求去DAO取数据，其它请求则等待其返回后，直接从内存中获取，等待一定时间后，如果还没获取到，则会去数据层获取数据。
->4. 如果是第一个获取数据的请求，判断是否需要自动加载。并把数据写入缓存；
->5. 把数据返回给用户。
-
-AutoLoadHandler（自动加载处理器）主要做的事情：当缓存即将过期时，去执行DAO的方法，获取数据，并将数据放到缓存中。为了防止自动加载队列过大，设置了容量限制；同时会将超过一定时间没有用户请求的也会从自动加载队列中移除，把服务器资源释放出来，给真正需要的请求。
-
-**使用自加载的目的:**
->1. 避免在请求高峰时，因为缓存失效，而造成数据库压力无法承受;
->2. 把一些耗时业务得以实现。
->3. 把一些使用非常频繁的数据，使用自动加载，因为这样的数据缓存失效时，最容易造成服务器的压力过大。
-
-**分布式自动加载**
-
-如果将应用部署在多台服务器上，理论上可以认为自动加载队列是由这几台服务器共同完成自动加载任务。比如应用部署在A,B两台服务器上，A服务器自动加载了数据D，（因为两台服务器的自动加载队列是独立的，所以加载的顺序也是一样的），接着有用户从B服务器请求数据D，这时会把数据D的最后加载时间更新给B服务器，这样B服务器就不会重复加载数据D。
-
-## 为什么要使用自动加载机制？
-
-首先我们想一下系统的瓶颈在哪里？
-
-1. 在高并发的情况下数据库性能极差，即使查询语句的性能很高；如果没有自动加载机制的话，在当缓存过期时，访问洪峰到来时，很容易就使数据库压力大增，而影响到整个系统的稳定。
-
-2. 往缓存“写”数据与从缓存读数据相比，效率也差很多，因为写缓存时需要分配内存等操作。使用自动加载，可以减少同时往缓存写数据的情况，同时也能提升缓存服务器的吞吐量。
-3. 还有一些比较耗时的业务得以实现。
-
-注：上面提到的两种异步刷新数据机制，如果从数据层获取数据时，发生异常，则会使用旧数据进行续租。
-
-## 如何减少DAO层并发
-
-1. 使用缓存；
-2. 使用自动加载机制，因“写”数据往往比读数据性能要差，使用自动加载也能减少写缓存的并发。
-3. 从DAO层加载数据时，**增加等待机制**（拿来主义）
+As shown below:
+![Alt ​​Cache Frame](FlowChart.png "Cache Frame")
 
 
-## 使用规范
+After AOP intercepts the request:
+>1. Generate a cache key according to the annotation @Cache in the request;
+>2. Get data from the cache according to the cache key
+* If there is data, judge whether it needs to be loaded automatically. If so, encapsulate the relevant data in AutoLoadTO and hand it over to AutoLoadHandler for processing; if automatic loading is not required, judge whether the cache is about to expire, and enable it if it is about to expire. The new thread refreshes the cache, which is handled by the RefreshHandler. Finally, the cached data is returned to the user;
+* If there is no data, go to the data layer to load the data
+>3. When going to the data layer to obtain data, in order to reduce concurrency, add a waiting mechanism (bringing mechanism): If multiple users fetch a data at the same time, then let the first request go to DAO to fetch data, and other requests will wait for it After returning, it is obtained directly from the memory. After waiting for a certain period of time, if it has not been obtained, it will go to the data layer to obtain the data.
+>4. If it is the first request to obtain data, determine whether automatic loading is required. and write the data to the cache;
+>5. Return the data to the user.
 
-1. 将调接口或数据库中取数据，**封装在DAO层**，不能什么地方都有调接口的方法。
-2. 自动加载缓存时，**不能**在缓存方法内**叠加（或减）**查询条件值，但允许设置值。
-3. DAO层内部，没使用@Cache的方法，不能调用加了@Cache的方法，避免AOP失效。
-4. 对于比较大的系统，要进行**模块化设计**，这样可以将自动加载，均分到各个模块中。
+The main thing that AutoLoadHandler does: when the cache is about to expire, execute the DAO method, get the data, and put the data in the cache. In order to prevent the auto-loading queue from being too large, a capacity limit is set; at the same time, those that have not been requested by users for more than a certain period of time will also be removed from the auto-loading queue, releasing server resources to those that are really needed.
+
+**The purpose of using self-loading:**
+>1. Avoid unbearable database pressure due to cache invalidation during request peaks;
+>2. Realize some time-consuming business.
+>3. Use automatic loading for some very frequently used data, because when the cache of such data is invalid, it is most likely to cause excessive pressure on the server.
+
+**Distributed autoloading**
+
+If the application is deployed on multiple servers, it can theoretically be considered that the automatic loading queue is performed by these servers together to complete the automatic loading task. For example, the application is deployed on two servers, A and B, and server A automatically loads data D (because the automatic loading queues of the two servers are independent, so the loading order is the same), and then a user requests data from server B D. At this time, the last loading time of data D will be updated to server B, so that server B will not load data D repeatedly.
+
+## Why use the autoload mechanism?
+
+First, let's think about where is the bottleneck of the system?
+
+1. In the case of high concurrency, the performance of the database is extremely poor, even if the performance of the query statement is very high; if there is no automatic loading mechanism, when the cache expires and the access peak arrives, it is easy to increase the pressure on the database, which will affect the to the stability of the entire system.
+
+2. "Writing" data to the cache is much less efficient than reading data from the cache, because operations such as memory allocation are required when writing to the cache. Using automatic loading can reduce the situation of writing data to the cache at the same time, and also improve the throughput of the cache server.
+3. There are also some more time-consuming business to be realized.
+
+Note: For the two asynchronous data refresh mechanisms mentioned above, if an exception occurs when obtaining data from the data layer, the old data will be used for lease renewal.
+
+## How to reduce DAO layer concurrency
+
+1. Use cache;
+2. Use the automatic loading mechanism, because the performance of "writing" data is often worse than that of reading data, and using automatic loading can also reduce the concurrency of write caches.
+3. When loading data from the DAO layer, **increase the waiting mechanism** (use doctrine)
 
 
-## 为了能让更多人使用此项目，一直在为具有更好的扩展性而努力，在以下几个方法已实现可扩展：
+## Terms of Use
 
-1. 缓存：现在已经支持Memcache、Redis、ConcurrentHashMap三种缓存，用户也可以自己增加扩展；
-2. AOP：项目中已经实现了Spring AOP的拦截。在Nutz官方项目中也实现了相关的插件：https://github.com/nutzam/nutzmore/tree/master/nutz-integration-autoloadcache
-3. 表达式解析用户也是可以根据自己的需要来进行扩展，也可以使用项目中已经实现的Spring EL表达式，或Javascript表达式；
-4. 序列化工具：项目中已经支持：Fastjson、Hessian2、Jdk自带等序列化工具；
-5. 数据压缩：已经支持基于Apache commons compress 实现的GZIP，BZIP2，XZ，PACK200，DEFLATE等压缩算法，也支持用户自已实现扩展。
-6. 深度复制工具，默认使用了高性能的cloning，也可以使用上述的序列化工具。
+1. Fetch data from the interface or database, and encapsulate it in the DAO layer. There cannot be a way to adjust the interface anywhere.
+2. When the cache is automatically loaded, **cannot** superimpose (or subtract)** the query condition value in the cache method, but it is allowed to set the value.
+3. Inside the DAO layer, if the @Cache method is not used, the method with @Cache cannot be called to avoid AOP failure.
+4. For a relatively large system, **modular design** should be carried out, so that the automatic loading can be equally divided into each module.
+
+
+## In order to allow more people to use this project, we have been striving for better scalability, and scalability has been achieved in the following methods:
+
+1. Cache: Memcache, Redis, ConcurrentHashMap three caches are now supported, and users can also add extensions themselves;
+2. AOP: Spring AOP interception has been implemented in the project. Related plugins are also implemented in the official Nutz project: https://github.com/nutzam/nutzmore/tree/master/nutz-integration-autoloadcache
+3. Expression parsing users can also expand according to their own needs, or use Spring EL expressions or Javascript expressions that have been implemented in the project;
+4. Serialization tools: The project already supports: Fastjson, Hessian2, Jdk and other serialization tools;
+5. Data compression: GZIP, BZIP2, XZ, PACK200, DEFLATE and other compression algorithms based on Apache commons compress have been supported, and users can also implement their own expansion.
+6. The deep copy tool, which uses high-performance cloning by default, can also use the above serialization tool.

@@ -1,23 +1,23 @@
-# 最佳实战
+# best practice
 
-### “空”处理
+### "null" handling
 
-非常多人都有这样的误区，认为数据层返回数据如果是“空”时（这里的空指的是：null或集合里为空）就不进行缓存了，这样才能实现数据的及时更新。对于这个情况，还是要分情况处理的。
+Many people have such a misunderstanding that if the data returned by the data layer is "empty" (empty here refers to: null or empty in the collection), it will not be cached, so that the data can be updated in time. In this case, it has to be dealt with on a case-by-case basis.
 
-1. 数据为“空”是人为造成的，不是真的没有数据
+1. The "empty" data is artificial, not really no data
 
-    非常典型的例子就是，异常处理不当造成的：直接使用try,catch，然后直接就返回null，或者一个空的集合。这样的做法非常不合理，使用者根本无法知道，是真的没有数据，还是因为有异常造成的，我们更无法确定要不要缓存这类数据了。
+   A very typical example is caused by improper exception handling: directly use try, catch, and then directly return null, or an empty collection. This approach is very unreasonable, and users cannot know whether there is really no data, or it is caused by an exception, and we are even more unsure whether to cache such data.
 
-    所以我们在实现数据层接口时，一定要合理使用异常处理。
+   Therefore, we must use exception handling reasonably when implementing the data layer interface.
 
-2. 数据“真的”为“空”时，建议缓存起来
+2. When the data is "true" and "empty", it is recommended to cache it
 
-    我们使用缓存的目的之一，就是防止缓存失效后直接穿透到数据层，造成系统负载过高。所以如果获取这个数据并发突然上来了，很容易造成系统瘫痪。如果只是尽快更新缓存中的数据，达到更好的“实时”性，可以减小缓存时间来实现。
+   One of the purposes of using the cache is to prevent the cache from penetrating directly to the data layer after invalidation, causing the system to be overloaded. Therefore, if the concurrency of acquiring this data suddenly comes up, it is easy to cause system paralysis. If you just update the data in the cache as soon as possible to achieve better "real-time" performance, you can reduce the cache time to achieve.
 
-    在AutoLoadCache 已经支持这种处理机制，只要在@Cache中，使用expireExpression，可以动态设置缓存时长，如：
+   This processing mechanism is already supported in AutoLoadCache. As long as expireExpression is used in @Cache, the cache duration can be dynamically set, such as:
 
-	```java
-   @Cache(key = "...", expireExpression = "#empty(#retVal) ? 60: 120")
-	```
+   ````java
+  @Cache(key = "...", expireExpression = "#empty(#retVal) ? 60: 120")
+   ````
 
-    而且数据为“空”，它是有它实际意义的，就是告诉我们现在没有数据, 不要忽略这点。
+   And the data is "empty", it has its practical meaning, that is to tell us that there is no data now, don't ignore this.

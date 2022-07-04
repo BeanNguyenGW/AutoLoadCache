@@ -1,13 +1,13 @@
-## AutoLoadCache 与 Spring Cache 的区分
+## Difference between AutoLoadCache and Spring Cache
 
-AutoLoadCache 与 Spring Cache 相似之处，都是使用 AOP + Annotation ，将缓存与业务逻辑进行解耦。而最重要的分别就是：AutoLoadCache 实现了自动加载和“拿来主义”机制，能更好地解决系统的性能及并发问题。 
+Similar to Spring Cache, AutoLoadCache uses AOP + Annotation to decouple cache from business logic. The most important difference is: AutoLoadCache implements automatic loading and "bringing" mechanisms, which can better solve system performance and concurrency problems.
 
-Spring Cache使用name 和 key的来管理缓存（即通过name和key就可以操作具体缓存了），而AutoLoadCache 使用的是namespace + key + hfield 来管理缓存，同时每个缓存都可以指定缓存时间（expire）。也就是说Spring Cache 比较适合用来管理Ehcache的缓存，而AutoLoadCache 适合管理Redis, Memcache 以及 ConcurrentHashMap，尤其是Redis和 ConcurrentHashMap，hfield 相关的功能都是针对它们进行开发的（因为Memcache不支持hash表，所以没办法使用hfield相关的功能）。 
+Spring Cache uses name and key to manage the cache (that is, the specific cache can be operated by name and key), while AutoLoadCache uses namespace + key + hfield to manage the cache, and each cache can specify the cache time (expire) . That is to say, Spring Cache is more suitable for managing Ehcache cache, while AutoLoadCache is suitable for managing Redis, Memcache and ConcurrentHashMap, especially Redis and ConcurrentHashMap, and hfield related functions are developed for them (because Memcache does not support hash table, so There is no way to use hfield related functions).
 
-在缓存管理应用中，不同的缓存其缓存时间（expire）要尽量设置为不同的。如果都相同的，那缓存同时失效的可能性会比较大些，这样穿透到数据库的可能性也就更大了，对系统的稳定性是没有好处的。 
+In the cache management application, the cache time (expire) of different caches should be set as different as possible. If they are all the same, the possibility of cache failure at the same time will be higher, so the possibility of penetrating into the database will be higher, which is not good for the stability of the system.
 
-Spring Cache 最大的缺点就是无法使用Spring EL表达式来动态生成Cache name,而且Cache name是的必须在Spring 配置时指定几个，非常不方便使用。尤其想在Redis中想精确清除一批缓存，是无法实现的，可能会误删除我们不希望被删除的缓存。 
+The biggest disadvantage of Spring Cache is that Spring EL expressions cannot be used to dynamically generate Cache names, and Cache names must be specified in Spring configuration, which is very inconvenient to use. In particular, it is impossible to accurately clear a batch of caches in Redis, and may mistakenly delete caches that we do not want to be deleted.
 
-Spring Cache中只能使用Spring 中的AOP, 而AutoloadCache 根据自己的实际情况进行扩展。
+Only AOP in Spring can be used in Spring Cache, and AutoloadCache can be extended according to its actual situation.
 
-Spring Cache只能基于Spring 中的AOP及Spring EL表达式来使用，而AutoloadCache 可以根据使用者的实际情况进行扩展。 
+Spring Cache can only be used based on AOP and Spring EL expressions in Spring, while AutoloadCache can be extended according to the actual situation of users.

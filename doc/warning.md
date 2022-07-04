@@ -1,18 +1,18 @@
-## 注意事项
+## Precautions
 
-### 1. 使用@Cache后，对应方法的参数及返回值必须都是可Serializable的。
+### 1. After using @Cache, the parameters and return values ​​of the corresponding method must be Serializable.
 
-为了避免参数被修改，AutoLoadHandler中需要**深度复制**后的参数进行异步刷新缓存。
+In order to avoid parameter modification, AutoLoadHandler needs to refresh the cache asynchronously with the parameters after deep copy.
 
-### 2. 参数中只设置必要的属性值，在DAO中用不到的属性值尽量不要设置，这样能避免生成不同的缓存Key，降低缓存的使用率。
-例如：
+### 2. Only the necessary attribute values ​​are set in the parameters, and the attribute values ​​that are not used in DAO should not be set as much as possible, so as to avoid the generation of different cache keys and reduce the utilization rate of the cache.
+E.g:
 
 ```java
 public CollectionTO<AccountTO> getAccountByCriteria(AccountCriteriaTO criteria)  {
     List<AccountTO> list=null;
     PaginationTO paging=criteria.getPaging();
-    if(null != paging && paging.getPageNo() > 0 && paging.getPageSize() > 0) {// 如果需要分页查询，先查询总数
-        criteria.setPaging(null);// 减少缓存KEY的变化，在查询记录总数据时，不用设置分页相关的属性值
+    if(null != paging && paging.getPageNo() > 0 && paging.getPageSize() > 0) {// If paging query is required, first query the total number
+        criteria.setPaging(null);// Reduce the change of cache KEY, when querying the total data of records, you do not need to set paging-related attribute values
         Integer recordCnt=accountDAO.getAccountCntByCriteria(criteria);
         if(recordCnt > 0) {
             criteria.setPaging(paging);
@@ -27,8 +27,8 @@ public CollectionTO<AccountTO> getAccountByCriteria(AccountCriteriaTO criteria) 
 }
 ```
 
-### 3. 注意AOP失效的情况;
-例如：
+### 3. Pay attention to the case of AOP failure;
+E.g:
 
 ```java
 TempDAO {
@@ -44,38 +44,38 @@ TempDAO {
 }
 ```        
 
-通过 new TempDAO().a() 调用b方法时，AOP失效，也无法进行缓存相关操作。
+When the b method is called through new TempDAO().a(), AOP is invalid, and cache related operations cannot be performed.
 
-### 4. 自动加载缓存时，不能在缓存方法内叠加查询参数值;
-例如：
+### 4. When the cache is loaded automatically, the query parameter value cannot be superimposed in the cache method;
+E.g:
 
 ```java
 @Cache(expire=600, autoload=true, key="'myKey'+#hash(#args[0])")
 public List<AccountTO> getDistinctAccountByPlayerGet(AccountCriteriaTO criteria) {
     List<AccountTO> list;
     int count=criteria.getPaging().getThreshold() ;
-    // 查预设查询数量的10倍
+    // Check 10 times the number of preset queries
     criteria.getPaging().setThreshold(count * 10);
     … …
 }
 ```
 
-因为自动加载时，AutoLoadHandler 缓存了查询参数，执行自动加载时，每次执行时 threshold 都会乘以10，这样threshold的值就会越来越大。
+Because AutoLoadHandler caches query parameters during automatic loading, when executing automatic loading, the threshold will be multiplied by 10 each time it is executed, so that the value of the threshold will become larger and larger.
 
 
-### 5. 对于一些比较耗时的方法尽量使用自动加载。
+### 5. Try to use automatic loading for some time-consuming methods.
 
-### 6. 对于查询条件变化比较剧烈的，不要使用自动加载机制。
-比如，根据用户输入的关键字进行搜索数据的方法，不建议使用自动加载。
+### 6. Do not use the automatic loading mechanism if the query conditions change drastically.
+For example, the method of searching data based on the keywords entered by the user is not recommended to use automatic loading.
 
-### 7. DAO方法中不能从ThreadLocal 获取数据，自动加载及异步刷新缓存数据是在别的线程池中进行的，会取不到ThreadLocal中的数据。
+### 7. The DAO method cannot obtain data from ThreadLocal. Automatic loading and asynchronous refresh of cached data are performed in other thread pools, and the data in ThreadLocal cannot be obtained.
 
-### 8. 使用 @Cache(opType=CacheOpType.WRITE)的坑
-因为AutoloadCache是不支持事务回滚的，所以在如下情况时，会出现缓存中的数据不正确的情况：
+### 8. Pit using @Cache(opType=CacheOpType.WRITE)
+Because AutoloadCache does not support transaction rollback, the data in the cache may be incorrect in the following situations:
 
 ```java
 public class UserDAO {
-    // 更新数据后，同时把数据缓存
+    // After updating the data, cache the data at the same time
     @Cache(expire=600, key="'user'+#retVal.id", opType=CacheOpType.WRITE)
     public UserTO updateUser(UserTO user) {
         getSqlMapClient().update("USER.updateUser", user);
@@ -84,14 +84,13 @@ public class UserDAO {
 }
 ```
 
-如果事务提交失败时，此时缓存中的数据无法回滚，所以使用时要注意。
+If the transaction commit fails, the data in the cache cannot be rolled back, so be careful when using it.
 
-## 在事务环境中，如何减少“脏读”
+## In a transactional environment, how to reduce "dirty reads"
 
-1. 不要从缓存中取数据，然后应用到修改数据的SQL语句中
+1. Do not fetch data from the cache and apply it to the SQL statement that modifies the data
 
-2. 在事务完成后，再删除相关的缓存, 使用@CacheDeleteTransactional 完成
+2. After the transaction is completed, delete the related cache, use @CacheDeleteTransactional to complete
 
 
-大部分情况，只要做到第1点就可以了，因为保证数据库中的数据准确才是最重要的。因为这种“脏读”的情况只能减少出现的概率，不能完成解决。一般只有在非常高并发的情况才有可能发生。就像12306，在查询时告诉你还有车票，但最后支付时不一定会有。
-
+In most cases, you only need to do point 1, because ensuring that the data in the database is accurate is the most important thing. Because this "dirty read" situation can only reduce the probability of occurrence, and cannot complete the solution. It is generally only possible in very high concurrency situations. Just like 12306, it tells you that there are still tickets when you check, but you may not have them when you pay at the end.

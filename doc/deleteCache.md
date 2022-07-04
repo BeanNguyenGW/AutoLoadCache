@@ -1,41 +1,41 @@
-## 缓存删除
+## cache delete
 
-### 通过删除缓存，实现数据实时性
+### Real-time data by deleting the cache
 
-下面商品评论的例子中，如果用户发表了评论，要所有涉及到的前端页面立即显示该如何来处理？
+In the example of product review below, if the user has commented, what should be done to display all the involved front-end pages immediately?
 
 ```java
 package com.jarvis.example.dao;
 import ... ...
 public class GoodsCommentDAO{
     @Cache(expire=600, key="'goods_comment_list_'+#args[0]", hfield = "#args[1]+'_'+#args[2]", autoload=true, requestTimeout=18000)
-    // goodsId=1, pageNo=2, pageSize=3 时相当于Redis命令：HSET goods_comment_list_1 2_3  List
+    // goodsId=1, pageNo=2, pageSize=3 is equivalent to Redis command: HSET goods_comment_list_1 2_3 List
     public List<CommentTO> getCommentListByGoodsId(Long goodsId, int pageNo, int pageSize) {
         ... ...
     }
 
-    @CacheDelete({@CacheDeleteKey(value="'goods_comment_list_'+#args[0].goodsId")}) // 删除当前所属商品的所有评论，不删除其它商品评论
-    // #args[0].goodsId = 1时，相当于Redis命令: DEL goods_comment_list_1
+    @CacheDelete({@CacheDeleteKey(value="'goods_comment_list_'+#args[0].goodsId")}) // delete all comments of the current product, not other product comments
+    // #args[0].goodsId = 1, equivalent to Redis command: DEL goods_comment_list_1
     public void addComment(Comment comment) {
-        ... ...// 省略添加评论代码
+        ... ...// Omit adding comment code
     }
 
     @CacheDelete({@CacheDeleteKey(value="'goods_comment_list_'+#args[0]", hfield = "#args[1]+'_'+#args[2]")}) 
-    // goodsId=1, pageNo=2, pageSize=3 时相当于Redis命令：DEL goods_comment_list_1 2_3 
+    // goodsId=1, pageNo=2, pageSize=3 is equivalent to Redis command: DEL goods_comment_list_1 2_3
     public void removeCache(Long goodsId, int pageNo, int pageSize) {
-        ... ...// 使用空方法来删除缓存
+        ... ...// use an empty method to delete the cache
     }
 }
 ```    
 
-### 批量删除缓存
+### Batch delete cache
 
-  在一些用户交互比较多的系统中，使用程序删除缓存是非常常见的事情，当我们遇到一些查询条件比较复杂的查询时，我们没有办法通过程序，反向生成缓存key,也就无法精确定位需要删除的缓存，但我们又不希望把不相关的缓存给误删除时。这时就可以使用下面介绍的批量删除缓存功能。
+In some systems with a lot of user interaction, it is very common to use a program to delete the cache. When we encounter some queries with complex query conditions, we have no way to reversely generate the cache key through the program, so we cannot accurately locate it. Caches that need to be deleted, but we don't want to delete irrelevant caches by mistake. At this time, you can use the batch delete cache function described below.
 
-  注意：批量删除缓存功能，现在只有Reids 和 ConcurrentHashMap两种缓存方式支持。Memcache无法支持。
+Note: The batch delete cache function is only supported by Reids and ConcurrentHashMap. Memcache cannot support it.
 
-  批量删除缓存，主要和存缓存的方式有关，我们把需要批量删除的缓存，放到对应的hash表中，需要批量删除时，把这个hash表删除就可以了，实现非常简单（因为Memcache不支持hash表，所以无法实现这种方式的批量删除缓存功能）。所以批量删除缓存，是因缓存缓存数据的方式改变了，才得以实现的。
+Batch deletion of caches is mainly related to the way of storing caches. We put the caches that need to be deleted in batches into the corresponding hash table. When batch deletion is required, the hash table can be deleted. The implementation is very simple (because Memcache does not support hash table, so the batch delete cache function cannot be implemented in this way). Therefore, batch deletion of caches is realized because the way of caching cached data has changed.
 
-  使用方法，参照上面删除商品评论的代码。在@Cache中加入hfield。
+To use, refer to the code above to delete product reviews. Add hfield to @Cache.
 
-  另外Reids还支持使用通配符进行批最删除缓存，但不建议使用。
+In addition, Reids also supports the use of wildcards to delete the cache in batches, but it is not recommended.

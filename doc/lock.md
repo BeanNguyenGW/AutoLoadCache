@@ -1,15 +1,15 @@
-## 分布式锁配置
+## Distributed lock configuration
 
-为了支持在高并发，大集群环境使用，增加了分布式锁的。
+In order to support use in high concurrency and large cluster environments, distributed locks are added.
 
-现在只支持排它锁，还不支持重入锁。
+Currently only exclusive locks are supported, reentrant locks are not yet supported.
 
-需要开启分布式锁支持，需要做以下配置：
+To enable distributed lock support, you need to do the following configuration:
 
-1. 在[@Cache](../autoload-cache-common/src/main/java/com/jarvis/cache/annotation/Cache.java "@Cache")注解中设置 lockExpire, 并且opType必须是CacheOpType.READ_WRITE。
-2. 需要往 [CacheHandler](../autoload-cache-core/src/main/java/com/jarvis/cache/CacheHandler.java "CacheHandler") 中的lock 属性注入ILock实例。 框架中已经内部已经基于Redis实现了一些分布式锁：
+1. Set lockExpire in the [@Cache](../autoload-cache-common/src/main/java/com/jarvis/cache/annotation/Cache.java "@Cache") annotation, and opType must be CacheOpType. READ_WRITE.
+2. Need to inject an ILock instance into the lock attribute in [CacheHandler](../autoload-cache-core/src/main/java/com/jarvis/cache/CacheHandler.java "CacheHandler"). The framework has already implemented some distributed locks based on Redis:
 
-  * ILock 
-      * |-----[AbstractRedisLock](../autoload-cache-lock/autoload-cache-lock-redis/src/main/java/com/jarvis/cache/lock/AbstractRedisLock.java "AbstractRedisLock")
-          * |-----[JedisClusterLock](../autoload-cache-lock/autoload-cache-lock-jedis/src/main/java/com/jarvis/cache/lock/JedisClusterLock.java "JedisClusterLock")
-          * |-----[ShardedJedisLock](../autoload-cache-lock/autoload-cache-lock-jedis/src/main/java/com/jarvis/cache/lock/ShardedJedisLock.java "ShardedJedisLock")
+* ILock
+    * |-----[AbstractRedisLock](../autoload-cache-lock/autoload-cache-lock-redis/src/main/java/com/jarvis/cache/lock/AbstractRedisLock.java "AbstractRedisLock")
+        * |-----[JedisClusterLock](../autoload-cache-lock/autoload-cache-lock-jedis/src/main/java/com/jarvis/cache/lock/JedisClusterLock.java "JedisClusterLock")
+        * |-----[ShardedJedisLock](../autoload-cache-lock/autoload-cache-lock-jedis/src/main/java/com/jarvis/cache/lock/ShardedJedisLock.java "ShardedJedisLock")

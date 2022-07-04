@@ -1,4 +1,4 @@
-## 使用方法
+## Instructions
 
 
 ### 1. Maven dependency:
@@ -11,19 +11,19 @@
 </dependency>
 ```    
 
-### 2. [AutoLoadConfig 配置说明](AutoLoadConfig.md)
+### 2. [AutoLoadConfig configuration description](AutoLoadConfig.md)
 
-### 3. 序列化工具：
+### 3. Serializer:
 
-序列化工具主要用于深度复杂，以及缓存中数据与Java对象的转换。框架中已经实现如下几种序列化工具:
+Serialization tools are mainly used for deep complexity and conversion of data in cache to Java objects. The following serialization tools have been implemented in the framework:
 
-1.  com.jarvis.cache.serializer.HessianSerializer 基于Hessian2序列化工具
-2.  com.jarvis.cache.serializer.JdkSerializer JDK自带序列化工具
-3.  com.jarvis.cache.serializer.FastjsonSerializer 基于Fastjson序列化工具，使用Fastjson时需要注意：返回值中如果是泛型的话，需要指明具体的类型，比如：List<User>，如果是直接返回List则会出错。
+1. com.jarvis.cache.serializer.HessianSerializer based on Hessian2 serializer
+2. com.jarvis.cache.serializer.JdkSerializer JDK comes with serialization tool
+3. com.jarvis.cache.serializer.FastjsonSerializer is based on the Fastjson serialization tool. When using Fastjson, you need to pay attention: if the return value is a generic type, you need to specify the specific type, such as: List<User>, if it is a direct return to List will error.
 
-如果希望对比较长的数据进行压缩处理后再传到分布式缓存服务器的话，可以使用com.jarvis.cache.serializer.CompressorSerializer 进行处理。支持GZIP，BZIP2，XZ，PACK200，DEFLATE，等几种压缩算法（默认使用GZIP）。
+If you want to compress long data before sending it to the distributed cache server, you can use com.jarvis.cache.serializer.CompressorSerializer for processing. Supports several compression algorithms such as GZIP, BZIP2, XZ, PACK200, DEFLATE, etc. (GZIP is used by default).
 
-如果需要使用其它序列化工具，可以通过实现com.jarvis.cache.serializer.ISerializer<Object>来扩展（比如：Kryo和FST等）。
+If you need to use other serialization tools, you can extend it by implementing com.jarvis.cache.serializer.ISerializer<Object> (eg Kryo and FST, etc.).
 
 ```xml
 <bean id="hessianSerializer" class="com.jarvis.cache.serializer.HessianSerializer" />
@@ -34,24 +34,24 @@
   <constructor-arg ref="hessianSerializer" />
 </bean>
 ```
-### 4. 表达式解析器
+### 4. Expression parser
 
-缓存Key及一些条件表达式，都是通过表达式与Java对象进行交互的，框架中已经内置了使用Spring El和Javascript两种表达的解析器，分别的：com.jarvis.cache.script.SpringELParser 和 com.jarvis.cache.script.JavaScriptParser，如果需要扩展，需要继承com.jarvis.cache.script.AbstractScriptParser 这个抽象类。
+The cache key and some conditional expressions interact with Java objects through expressions. The framework has built-in parsers using Spring El and Javascript expressions, respectively: com.jarvis.cache.script.SpringELParser and com.jarvis.cache.script.JavaScriptParser, if you need to extend it, you need to inherit the abstract class com.jarvis.cache.script.AbstractScriptParser.
 
 ```xml
 <bean id="scriptParser" class="com.jarvis.cache.script.SpringELParser" />
 ```
 
-### 5.缓存配置
+### 5. Cache configuration
 
-框架已经支持 Redis、Memcache以及ConcurrentHashMap 三种缓存：
+The framework already supports Redis, Memcache and ConcurrentHashMap three caches:
 
-* [Redis 配置](JRedis.md)
-* [Memcache 配置](Memcache.md)
-* [ConcurrentHashMap 配置](ConcurrentHashMap.md)
-* [二级缓存请参考ComboCacheManager.java](../autoload-cache-core/src/main/java/com/jarvis/cache/ComboCacheManager.java)
+* [Redis configuration](JRedis.md)
+* [Memcache configuration](Memcache.md)
+* [ConcurrentHashMap configuration](ConcurrentHashMap.md)
+* [Please refer to ComboCacheManager.java for secondary cache](../autoload-cache-core/src/main/java/com/jarvis/cache/ComboCacheManager.java)
 
-### 6.缓存处理器
+### 6. Cache Processor
 
 ```xml
 <bean id="cacheHandler" class="com.jarvis.cache.CacheHandler" destroy-method="destroy">
@@ -62,26 +62,26 @@
 </bean>
 ```
 
-### 7.AOP 配置：
+### 7.AOP configuration:
 
 ```xml
 <bean id="cacheInterceptor" class="com.jarvis.cache.aop.aspectj.AspectjAopInterceptor">
   <constructor-arg ref="cacheHandler" />
 </bean>
 <aop:config proxy-target-class="true">
-  <!-- 处理 @Cache AOP-->
+  <!-- Process @Cache AOP-->
   <aop:aspect ref="cacheInterceptor">
     <aop:pointcut id="daoCachePointcut" expression="execution(public !void com.jarvis.cache_example.common.dao..*.*(..)) &amp;&amp; @annotation(cache)" />
     <aop:around pointcut-ref="daoCachePointcut" method="proceed" />
   </aop:aspect>
 
-  <!-- 处理 @CacheDelete AOP-->
-  <aop:aspect ref="cacheInterceptor" order="1000"><!-- order 参数控制 aop通知的优先级，值越小，优先级越高 ，在事务提交后删除缓存 -->
+  <!-- handle @CacheDelete AOP-->
+  <aop:aspect ref="cacheInterceptor" order="1000"><!-- The order parameter controls the priority of aop notifications. The smaller the value, the higher the priority, and the cache will be deleted after the transaction is committed -->
     <aop:pointcut id="deleteCachePointcut" expression="execution(* com.jarvis.cache_example.common.dao..*.*(..)) &amp;&amp; @annotation(cacheDelete)" />
     <aop:after-returning pointcut-ref="deleteCachePointcut" method="deleteCache" returning="retVal"/>
   </aop:aspect>
 
-  <!-- 处理 @CacheDeleteTransactional AOP-->
+  <!-- Handle @CacheDeleteTransactional AOP-->
   <aop:aspect ref="cacheInterceptor">
     <aop:pointcut id="cacheDeleteTransactional" expression="execution(* com.jarvis.cache_example.common.service..*.*(..)) &amp;&amp; @annotation(cacheDeleteTransactional)" />
     <aop:around pointcut-ref="cacheDeleteTransactional" method="deleteCacheTransactional" />
@@ -89,17 +89,17 @@
 </aop:config>
 ```
 
-如果不同的数据，要使用不同的缓存的话，可以通过配置多个AOP来进行共区分。
+If different data needs to use different caches, they can be distinguished by configuring multiple AOPs.
 
 
-### 8. 在需要使用缓存操作的方法前增加 @Cache和 @CacheDelete注解
+### 8. Add @Cache and @CacheDelete annotations before methods that need to use cache operations
 
-更多的配置可以参照
+More configuration can refer to
 
-[autoload-cache-spring-boot-starter](https://github.com/qiujiayu/autoload-cache-spring-boot-starter) 推荐使用这个，[test目录](https://github.com/qiujiayu/autoload-cache-spring-boot-starter/tree/master/src/test)中也有可运行例子。
+[autoload-cache-spring-boot-starter](https://github.com/qiujiayu/autoload-cache-spring-boot-starter) It is recommended to use this, [test directory](https://github.com/qiujiayu There are also runnable examples in /autoload-cache-spring-boot-starter/tree/master/src/test).
 
-[Spring 实例代码](https://github.com/qiujiayu/cache-example)，基于Spring XML进行配置
+[Spring example code](https://github.com/qiujiayu/cache-example), based on Spring XML configuration
 
-[Spring boot 实例代码](https://github.com/qiujiayu/autoload-cache-spring-boot-starter/tree/master/src/test)
+[Spring boot example code](https://github.com/qiujiayu/autoload-cache-spring-boot-starter/tree/master/src/test)
 
-以上配置是基于 Spring 的配置，如果是使用nutz，请参照 [AutoLoadCache-nutz](https://github.com/qiujiayu/AutoLoadCache-nutz) 中的说明。
+The above configuration is based on Spring configuration. If nutz is used, please refer to the instructions in [AutoLoadCache-nutz](https://github.com/qiujiayu/AutoLoadCache-nutz).

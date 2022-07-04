@@ -1,45 +1,45 @@
-## 表达式的应用
+## Application of expressions
 
-以下是以Spring EL表达式为例子，如果使用其它表达式，需要注意语法的不同。
+The following is an example of a Spring EL expression. If you use other expressions, you need to pay attention to the difference in syntax.
 
-### 缓存Key的生成
+### Cache key generation
 
-在@Cache中设置key，可以是字符串或Spring EL表达式，例如： 
+Set the key in @Cache, which can be a string or a Spring EL expression, for example:
 
 ```java
 @Cache(expire=600, key="'goods.getGoodsById'+#args[0]")
 public GoodsTO getGoodsById(Long id){...}
 ```
 
-为了使用方便，调用hash 函数可以将任何Object转为字符串，使用方法如下：
+For the convenience of use, calling the hash function can convert any Object into a string. The usage method is as follows:
 
 ```java     
 @Cache(expire=720, key="'GOODS.getGoods:'+#hash(#args)")
 public List<GoodsTO> getGoods(GoodsCriteriaTO goodsCriteria){...}
 ```        
-生成的缓存Key为"GOODS.getGoods:xxx",xxx为args，的转在的字符串。
+The generated cache key is "GOODS.getGoods:xxx", where xxx is args, and the converted string.
 
-在拼缓存Key时，各项数据最好都用特殊字符进行分隔，否则缓存的Key有可能会乱的。比如：a,b 两个变量a=1,b=11,如果a=11,b=1,两个变量中间不加特殊字符，拼在一块，值是一样的。
-  
-Spring EL表达式支持调整类的static 变量和方法，比如："T(java.lang.Math).PI"。
+When spelling out the cached key, it is best to separate the data with special characters, otherwise the cached key may be messed up. For example: a, b two variables a=1, b=11, if a=11, b=1, no special characters are added between the two variables, they are spelled together, and the value is the same.
 
-### 提供的SpEL上下文数据
+Spring EL expressions support adjusting static variables and methods of classes, for example: "T(java.lang.Math).PI".
 
-| 名字 | 描述 | 示例 |
+### Provided SpEL context data
+
+| name | description | example |
 | ------------- | ------------- | ------------- |
-| args | 当前被调用的方法的参数列表 | #args[0] |
-| retVal | 方法执行后的返回值（仅当方法执行之后才有效，如@Cache(opType=CacheOpType.WRITE),expireExpression,autoloadCondition,@ExCache() | #retVal |
-| target | AOP 拦截到的当前实例 | #target |
+| args | Argument list of the currently called method | #args[0] |
+| retVal | The return value after the method is executed (only valid after the method is executed, such as @Cache(opType=CacheOpType.WRITE),expireExpression,autoloadCondition,@ExCache() | #retVal |
+| target | The current instance intercepted by AOP | #target |
 
-### 提供的SpEL函数
+### Provided SpEL functions
 
-| 名字 | 描述 | 示例 |
+| name | description | example |
 | ------------- | ------------- | ------------- |
-| hash | 将Object 对象转换为唯一的Hash字符串 | #hash(#args) |
-| empty | 判断Object对象是否为空 | #empty(#args[0]) |
+| hash | Convert Object to unique Hash string | #hash(#args) |
+| empty | Determine whether the Object object is empty | #empty(#args[0]) |
 
-### 自定义SpEL函数
-通过AutoLoadConfig 的functions 注册自定义函数，例如：
+### Custom SpEL function
+Register custom functions through AutoLoadConfig functions, for example:
 
 ```xml
 <bean id="autoLoadConfig" class="com.jarvis.cache.to.AutoLoadConfig">
@@ -47,13 +47,13 @@ Spring EL表达式支持调整类的static 变量和方法，比如："T(java.la
   <property name="functions">
     <map>
       <entry key="isEmpty" value="com.jarvis.cache.CacheUtil" />
-      <!--#isEmpty(#args[0]) 表示调com.jarvis.cache.CacheUtil中的isEmpty方法-->
+      <!--#isEmpty(#args[0]) means to call the isEmpty method in com.jarvis.cache.CacheUtil -->
     </map>
   </property>
 </bean>
 ```
 
-网上大概搜了一下，有以下几种表达式计算引擎:
+I searched about it on the Internet, and there are the following expression calculation engines:
 
 1. Ognl http://commons.apache.org/proper/commons-ognl/
 2. fast-el https://code.google.com/archive/p/fast-el/
@@ -62,21 +62,21 @@ Spring EL表达式支持调整类的static 变量和方法，比如："T(java.la
 5. commons-jexl http://commons.apache.org/proper/commons-jexl/
 6. Aviator https://code.google.com/archive/p/aviator/
 7. IKExpression https://code.google.com/archive/p/ik-expression/
-8. JDK自带脚本引擎：javax.script.ScriptEngineManager
-9. JUEL  
+8. JDK comes with a script engine: javax.script.ScriptEngineManager
+   JUEL
 10. beanshell http://www.beanshell.org/
 11. Groovy
 12. JRuby
 
 
-脚本性能测试代码：com.test.script.ScriptTest，通过这个测试发现OGNL的性能最优。
+Script performance test code: com.test.script.ScriptTest, through this test, it is found that OGNL has the best performance.
 
-已经实现了SpringEL、OGNL、JavaScript三种表达式的支持。
+Support for SpringEL, OGNL, and JavaScript expressions has been implemented.
 
 
-### 几种常用表达式的例子
+### Examples of several common expressions
 
-parse 解析器| 取retVal中的值(Map类型) |取retVal中的值(javaBean类型) | 使用hash函数 | 使用 empty 判断 |
+parse parser | take the value in retVal (Map type) | take the value in retVal (javaBean type) | use hash function | use empty judgment |
 ------------ | ------------- |-------------  |-------------  |------------- 
 spring | `#retVal.get('rid')` |`#retVal.rid`  | `#hash(#args)`  | `#empty(#args[0])`  |
 javascript | `retVal.get('rid')` |  `retVal.rid` |  `hash(args)` | `empty(args[0])`  |
